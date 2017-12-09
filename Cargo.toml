@@ -1,0 +1,6 @@
+[package]
+name = "metamagic"
+version = "0.1.0"
+authors = ["sahil"]
+
+[dependencies]
