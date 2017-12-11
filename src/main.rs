@@ -54,27 +54,42 @@ fn load_metadata_file(file_name: &str) -> VideoMeta {
     return data;
 }
 
-//Function for taking a directory and creating a list of file_names
-//fn get_metadata_filenames(dir_path: &str) {
-//    let paths = fs::read_dir(dir_path)
-//        .expect("Directory not found.");
-//    return paths;
-//}
+//TODO: should it be `return video_data` or `return &video_data`?
+fn get_video_metadata(dir_path: &str) -> Vec<VideoMeta> {
+//Function for taking a directory and creating a list of VideoMetas
+    let paths = fs::read_dir(dir_path)
+        .expect("Directory not found.");
+
+    let mut video_data: Vec<VideoMeta> = vec![];
+    for path in paths {
+        video_data.push(load_metadata_file(path.unwrap().path().to_str().unwrap()))
+    }
+    return video_data
+}
 
 // function for filtering, input: device ID & list of structs, output: list of structs w/ id
 // Managing data - do we send the struct itself or a reference to the struct?
+fn get_by_device_id(device_id: String, video_data: Vec<VideoMeta>) -> Vec<VideoMeta> {
+    let filtered_devices = video_data.into_iter().filter(|ref i|i.device_id == device_id);
+    let device_data = filtered_devices.collect::<Vec<_>>();
+    return device_data
+}
 
 // function for sorting input, input: list of structs, output: sorted list
 
 // TODO: Write a test case that shows VideoMeta Debug trait
 fn main() {
-    let data = load_metadata_file("test.json");
-    //println!("{:?}", &data);
-    println!("{}\n", &data);
+    //let data = load_metadata_file("test.json");
+    //println!("{}\n", &data);
 
-    let paths = fs::read_dir("./metadata")
-        .expect("Directory not found.");
-    for path in paths {
-        println!("{:?}", path)
+    let video_data = get_video_metadata("./metadata");
+    //println!("{:?}", &video_data);
+
+    //TODO: Should I use `&video_data` instead?
+    let device_id = String::from("1fc0c10b0a534202");
+    let device_data = get_by_device_id(device_id, video_data);
+
+    for data in device_data {
+        println!("{}", data);
     }
 }
