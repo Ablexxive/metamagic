@@ -4,3 +4,7 @@ version = "0.1.0"
 authors = ["sahil"]
 
 [dependencies]
+serde = "1.0"
+# Used to derive Serialize and Deserialize
+serde_derive = "1.0"
+serde_json = "1.0"

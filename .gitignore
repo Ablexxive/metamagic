@@ -1,2 +1,5 @@
+guidelines.txt
+*.json
+*.tar
 /target/
 **/*.rs.bk
