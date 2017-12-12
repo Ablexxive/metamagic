@@ -11,7 +11,9 @@ use std::io::Read;
 
 //TODO: Read about primitive datatypes and choose appropriate ones
 //TODO: serde_milliseconds for timestamps?
-#[derive(Serialize, Deserialize, Debug)]
+// TODO: Determine proper way to add code comments
+// The VideoMeta struct mirrors structure of JSON Metadata files.
+#[derive(Serialize, Deserialize, Debug, Clone)]
 struct VideoMeta {
     fps: i32,
     format: String,
@@ -25,6 +27,8 @@ struct VideoMeta {
 
 //TODO: Convert capture start/tick to seconds? or more readable time format?
 impl fmt::Display for VideoMeta {
+    // Display implementation that cleanly prints out data contained
+    // in a VideoMeta struct.
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let device_id = format!("Device ID: {}", self.device_id);
         let logger_id = format!("Logger ID: {}", self.logger_id);
@@ -40,11 +44,9 @@ impl fmt::Display for VideoMeta {
     }
 }
 
-
-//TODO: Can we convert straight from file to VideoMeta instead of string first?
-fn load_metadata_file(file_name: &str) -> VideoMeta {
-// function for taking in a file_name, return a struct
-    let mut file = File::open(file_name)
+fn load_metadata_file(file_path: &str) -> VideoMeta {
+    // Reads and deseralizes JSON data into VideoMeta struct.
+    let mut file = File::open(file_path)
         .expect("Failed to read file");
 
     let mut string_file = String::new();
@@ -54,9 +56,8 @@ fn load_metadata_file(file_name: &str) -> VideoMeta {
     return data;
 }
 
-//TODO: should it be `return video_data` or `return &video_data`?
 fn get_video_metadata(dir_path: &str) -> Vec<VideoMeta> {
-//Function for taking a directory and creating a list of VideoMetas
+    //Function for taking a directory and creating a list of VideoMeta structs
     let paths = fs::read_dir(dir_path)
         .expect("Directory not found.");
 
@@ -67,29 +68,55 @@ fn get_video_metadata(dir_path: &str) -> Vec<VideoMeta> {
     return video_data
 }
 
-// function for filtering, input: device ID & list of structs, output: list of structs w/ id
-// Managing data - do we send the struct itself or a reference to the struct?
-fn get_by_device_id(device_id: String, video_data: Vec<VideoMeta>) -> Vec<VideoMeta> {
+fn get_by_device_id(device_id: &str, video_data: &Vec<VideoMeta>) -> Vec<VideoMeta> {
     let filtered_devices = video_data.into_iter().filter(|ref i|i.device_id == device_id);
-    let device_data = filtered_devices.collect::<Vec<_>>();
+
+    let mut device_data: Vec<VideoMeta> = vec![];
+
+    for each in filtered_devices {
+        println!("{:?}", each);
+        device_data.push(each.clone());
+    }
     return device_data
+    //return filtered_devices;
+    //let device_data = filtered_devices.collect::<Vec<_>>();
+    //return device_data
+    //video_data.retain(|ref i|i.device_id == device_id);
+    //return video_data
 }
 
 // function for sorting input, input: list of structs, output: sorted list
+fn sort_by_capture_start(mut video_data: Vec<VideoMeta>) -> Vec<VideoMeta> {
+//fn sort_by_capture_start(mut video_data: Vec<VideoMeta>) {
+    //let data_iter = video_data.into_iter().sort_by(|a, b| a.capture_start.cmp(b.capture_start));
+    //return data_iter.collect::<Vec<_>>();
+    video_data.sort_by(|a, b| a.capture_start.cmp(&b.capture_start));
+    //println!("{:?}", video_data);
+    return video_data;
+}
 
 // TODO: Write a test case that shows VideoMeta Debug trait
 fn main() {
     //let data = load_metadata_file("test.json");
     //println!("{}\n", &data);
 
-    let video_data = get_video_metadata("./metadata");
+    let mut video_data = get_video_metadata("./metadata");
     //println!("{:?}", &video_data);
 
-    //TODO: Should I use `&video_data` instead?
-    let device_id = String::from("1fc0c10b0a534202");
-    let device_data = get_by_device_id(device_id, video_data);
+    //let device_data = get_by_device_id("1fc0c10b0a534202", video_data.to_vec());
+    let device_data = get_by_device_id("1fc0c10b0a534202", &video_data);
 
     for data in device_data {
         println!("{}", data);
     }
+
+    //println!("Pre sorted:");
+    //for data in &video_data {
+    //        println!("{}", data.capture_start);
+    //}
+    //println!("\n\n\n\nPost sorted:");
+    //video_data = sort_by_capture_start(video_data);
+    //for data in &video_data {
+    //        println!("{}", data.capture_start);
+    //}
 }
