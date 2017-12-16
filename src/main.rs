@@ -11,10 +11,11 @@ use std::io::Read;
 
 //TODO: Read about primitive datatypes and choose appropriate ones
 //TODO: serde_milliseconds for timestamps?
-// TODO: Determine proper way to add code comments
+//TODO: Is there an equivalent to PEP?
+
+/// The VideoMeta struct mirrors structure of Video Metadata JSON files.
 #[derive(Serialize, Deserialize, Debug, Clone)]
 struct VideoMeta {
-    // The VideoMeta struct mirrors structure of JSON Metadata files.
     fps: i32,
     format: String,
     res_y: i32,
@@ -26,9 +27,9 @@ struct VideoMeta {
 }
 
 //TODO: Convert capture start/tick to seconds? or more readable time format?
+/// Display implementation that cleanly prints out data contained
+/// in a VideoMeta struct.
 impl fmt::Display for VideoMeta {
-    // Display implementation that cleanly prints out data contained
-    // in a VideoMeta struct.
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let device_id = format!("Device ID: {}", self.device_id);
         let logger_id = format!("Logger ID: {}", self.logger_id);
@@ -44,8 +45,8 @@ impl fmt::Display for VideoMeta {
     }
 }
 
+/// Reads and deseralizes JSON data into VideoMeta struct.
 fn load_metadata_json(file_path: &str) -> VideoMeta {
-    // Reads and deseralizes JSON data into VideoMeta struct.
     let mut file = File::open(file_path)
         .expect("Failed to read file");
 
@@ -56,8 +57,8 @@ fn load_metadata_json(file_path: &str) -> VideoMeta {
     return data;
 }
 
+///Function for taking a directory and creating a list of VideoMeta structs
 fn get_video_metadata(dir_path: &str) -> Vec<VideoMeta> {
-    //Function for taking a directory and creating a list of VideoMeta structs
     let paths = fs::read_dir(dir_path)
         .expect("Directory not found.");
 
@@ -69,8 +70,9 @@ fn get_video_metadata(dir_path: &str) -> Vec<VideoMeta> {
 }
 
 // TODO: What to do when there is nothing matching the device ID?
+/// Filters a referenced VideoMeta vector by device_id and 
+/// returns a new filtered vector.
 fn get_by_device_id(device_id: &str, video_data: &Vec<VideoMeta>) -> Vec<VideoMeta> {
-    // Filters VideoMeta vector by device_id and returns a new vector.
     let filtered_devices = video_data.into_iter().filter(|ref i|i.device_id == device_id);
 
     let mut device_data: Vec<VideoMeta> = vec![];
