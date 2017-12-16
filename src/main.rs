@@ -41,6 +41,7 @@ impl fmt::Display for VideoMeta {
         let display_string = [device_id, logger_id, capture_start, tick, fps_format, resolution]
             .join("\n");
 
+        //TODO: Why is there no semicolon at the end of this write?
         write!(f, "{}", &display_string)
     }
 }
@@ -70,10 +71,13 @@ fn get_video_metadata(dir_path: &str) -> Vec<VideoMeta> {
 }
 
 // TODO: What to do when there is nothing matching the device ID?
-/// Filters a referenced VideoMeta vector by device_id and 
+/// Filters a referenced VideoMeta vector by device_id and
 /// returns a new filtered vector.
 fn get_by_device_id(device_id: &str, video_data: &Vec<VideoMeta>) -> Vec<VideoMeta> {
-    let filtered_devices = video_data.into_iter().filter(|ref i|i.device_id == device_id);
+    // TODO: What exactly does 'borrow' mean in this context?
+    // Here we can use `.iter()` or `.into_iter()` - first one is referencing
+    // the original data where as the latter borrows the data
+    let filtered_devices = video_data.iter().filter(|ref i|i.device_id == device_id);
 
     let mut device_data: Vec<VideoMeta> = vec![];
 
