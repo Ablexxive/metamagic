@@ -12,9 +12,9 @@ use std::io::Read;
 //TODO: Read about primitive datatypes and choose appropriate ones
 //TODO: serde_milliseconds for timestamps?
 // TODO: Determine proper way to add code comments
-// The VideoMeta struct mirrors structure of JSON Metadata files.
 #[derive(Serialize, Deserialize, Debug, Clone)]
 struct VideoMeta {
+    // The VideoMeta struct mirrors structure of JSON Metadata files.
     fps: i32,
     format: String,
     res_y: i32,
@@ -44,7 +44,7 @@ impl fmt::Display for VideoMeta {
     }
 }
 
-fn load_metadata_file(file_path: &str) -> VideoMeta {
+fn load_metadata_json(file_path: &str) -> VideoMeta {
     // Reads and deseralizes JSON data into VideoMeta struct.
     let mut file = File::open(file_path)
         .expect("Failed to read file");
@@ -63,60 +63,66 @@ fn get_video_metadata(dir_path: &str) -> Vec<VideoMeta> {
 
     let mut video_data: Vec<VideoMeta> = vec![];
     for path in paths {
-        video_data.push(load_metadata_file(path.unwrap().path().to_str().unwrap()))
+        video_data.push(load_metadata_json(path.unwrap().path().to_str().unwrap()))
     }
     return video_data
 }
 
+// TODO: What to do when there is nothing matching the device ID?
 fn get_by_device_id(device_id: &str, video_data: &Vec<VideoMeta>) -> Vec<VideoMeta> {
+    // Filters VideoMeta vector by device_id and returns a new vector.
     let filtered_devices = video_data.into_iter().filter(|ref i|i.device_id == device_id);
 
     let mut device_data: Vec<VideoMeta> = vec![];
 
     for each in filtered_devices {
-        println!("{:?}", each);
         device_data.push(each.clone());
     }
     return device_data
-    //return filtered_devices;
-    //let device_data = filtered_devices.collect::<Vec<_>>();
-    //return device_data
-    //video_data.retain(|ref i|i.device_id == device_id);
-    //return video_data
 }
 
-// function for sorting input, input: list of structs, output: sorted list
 fn sort_by_capture_start(mut video_data: Vec<VideoMeta>) -> Vec<VideoMeta> {
-//fn sort_by_capture_start(mut video_data: Vec<VideoMeta>) {
-    //let data_iter = video_data.into_iter().sort_by(|a, b| a.capture_start.cmp(b.capture_start));
-    //return data_iter.collect::<Vec<_>>();
+    // Sorts VideoMeta vec by capture time.
     video_data.sort_by(|a, b| a.capture_start.cmp(&b.capture_start));
-    //println!("{:?}", video_data);
     return video_data;
 }
 
-// TODO: Write a test case that shows VideoMeta Debug trait
+//TODO: Write function to seralize data and write a new JSON file
+#[test]
+fn write_metadata_file() {
+    let fps = 10;
+    let res_y = 1232;
+    let res_x = 1640;
+    let format = "video/mp4";
+    let logger_id = "internal_test";
+    let device_id = "faux_device";
+    //TODO: Get current time for capture start, round for tick.
+    //Create a new VideoMeta data structure.
+    //Seralize and write.
+}
+
 fn main() {
-    //let data = load_metadata_file("test.json");
-    //println!("{}\n", &data);
+    let metadata_folder = "./metadata";
+    let device_id = "1fc0c10b0a534202";
 
-    let mut video_data = get_video_metadata("./metadata");
-    //println!("{:?}", &video_data);
+    let mut video_data = get_video_metadata(metadata_folder);
 
-    //let device_data = get_by_device_id("1fc0c10b0a534202", video_data.to_vec());
-    let device_data = get_by_device_id("1fc0c10b0a534202", &video_data);
+    let device_data = get_by_device_id(device_id, &video_data);
 
+    println!("Listing all metadata files from device ID: {}", device_id);
     for data in device_data {
-        println!("{}", data);
+        println!("{}\n", data);
     }
 
-    //println!("Pre sorted:");
-    //for data in &video_data {
-    //        println!("{}", data.capture_start);
-    //}
-    //println!("\n\n\n\nPost sorted:");
-    //video_data = sort_by_capture_start(video_data);
-    //for data in &video_data {
-    //        println!("{}", data.capture_start);
-    //}
+    println!("Sorting metadata files by capture start times:");
+    println!("Pre sorted:");
+    for data in &video_data {
+            println!("{}", data.capture_start);
+    }
+
+    video_data = sort_by_capture_start(video_data);
+    println!("\n\nPost sorted:");
+    for data in &video_data {
+            println!("{}", data.capture_start);
+    }
 }
