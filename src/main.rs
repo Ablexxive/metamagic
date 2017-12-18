@@ -1,6 +1,5 @@
 #[macro_use]
 extern crate serde_derive;
-
 extern crate serde;
 extern crate serde_json;
 
@@ -8,22 +7,23 @@ use std::fmt;
 use std::fs;
 use std::fs::File;
 use std::io::Read;
+use std::io::prelude::*;
+use std::path::Path;
+use std::time::{SystemTime, UNIX_EPOCH};
 
-//TODO: Read about primitive datatypes and choose appropriate ones
-//TODO: serde_milliseconds for timestamps?
-//TODO: Is there an equivalent to PEP?
+//TODO: Write test block? Write docs?
 
 /// The VideoMeta struct mirrors structure of Video Metadata JSON files.
 #[derive(Serialize, Deserialize, Debug, Clone)]
 struct VideoMeta {
-    fps: i32,
+    fps: u32,
     format: String,
-    res_y: i32,
-    res_x: i32,
-    capture_start: i64,
+    res_y: u32,
+    res_x: u32,
+    capture_start: u64,
     logger_id: String,
     device_id: String,
-    tick: i64,
+    tick: u64,
 }
 
 //TODO: Convert capture start/tick to seconds? or more readable time format?
@@ -43,19 +43,31 @@ impl fmt::Display for VideoMeta {
 
         //TODO: Why is there no semicolon at the end of this write?
         write!(f, "{}", &display_string)
+
+        //write!(f,
+        //       r#"Device ID: {}
+        //       Logger ID: {}
+        //       "#, )
     }
 }
 
-/// Reads and deseralizes JSON data into VideoMeta struct.
-fn load_metadata_json(file_path: &str) -> VideoMeta {
+/// Reads and deserializes JSON data into VideoMeta struct.
+fn load_metadata_json<P: AsRef<Path>>(file_path: P) -> VideoMeta {
+//fn load_metadata_json(file_path: &str) -> VideoMeta {
     let mut file = File::open(file_path)
         .expect("Failed to read file");
 
     let mut string_file = String::new();
-    file.read_to_string(&mut string_file).unwrap();
+    file.read_to_string(&mut string_file)
+        .unwrap();
 
-    let data: VideoMeta = serde_json::from_str(&string_file).unwrap();
-    return data;
+    //let data: VideoMeta = serde_json::from_str(&string_file)
+    //    .unwrap();
+
+    //return data;
+
+    serde_json::from_str::<VideoMeta>(&string_file)
+        .unwrap()
 }
 
 ///Function for taking a directory and creating a list of VideoMeta structs
@@ -64,10 +76,19 @@ fn get_video_metadata(dir_path: &str) -> Vec<VideoMeta> {
         .expect("Directory not found.");
 
     let mut video_data: Vec<VideoMeta> = vec![];
+    //for path in paths {
+    //    video_data
+    //        .push(load_metadata_json(path.unwrap().path().to_str().unwrap()))
+    //}
     for path in paths {
-        video_data.push(load_metadata_json(path.unwrap().path().to_str().unwrap()))
+        video_data.push(
+            load_metadata_json(path
+                               .expect("Initial path unwrap failed.")
+                               .path()
+                               .to_str()
+                               .expect("Final path unwrap failed.")));
     }
-    return video_data
+    return video_data;
 }
 
 // TODO: What to do when there is nothing matching the device ID?
@@ -77,7 +98,9 @@ fn get_by_device_id(device_id: &str, video_data: &Vec<VideoMeta>) -> Vec<VideoMe
     // TODO: What exactly does 'borrow' mean in this context?
     // Here we can use `.iter()` or `.into_iter()` - first one is referencing
     // the original data where as the latter borrows the data
-    let filtered_devices = video_data.iter().filter(|ref i|i.device_id == device_id);
+    let filtered_devices = video_data
+        .iter()
+        .filter(|ref i|i.device_id == device_id);
 
     let mut device_data: Vec<VideoMeta> = vec![];
 
@@ -87,24 +110,40 @@ fn get_by_device_id(device_id: &str, video_data: &Vec<VideoMeta>) -> Vec<VideoMe
     return device_data
 }
 
-fn sort_by_capture_start(mut video_data: Vec<VideoMeta>) -> Vec<VideoMeta> {
+fn sort_by_capture_start(video_data: &mut Vec<VideoMeta>) {
     // Sorts VideoMeta vec by capture time.
     video_data.sort_by(|a, b| a.capture_start.cmp(&b.capture_start));
-    return video_data;
 }
 
-//TODO: Write function to seralize data and write a new JSON file
-#[test]
+/// Creates a new VeideoMeta struct with faux information and current time,
+/// then serializes it to write a JSON metadata file.
 fn write_metadata_file() {
-    let fps = 10;
-    let res_y = 1232;
-    let res_x = 1640;
-    let format = "video/mp4";
-    let logger_id = "internal_test";
-    let device_id = "faux_device";
-    //TODO: Get current time for capture start, round for tick.
-    //Create a new VideoMeta data structure.
-    //Seralize and write.
+    let since_epoch = SystemTime::now().duration_since(UNIX_EPOCH).unwrap();
+
+    let capture_start = since_epoch.as_secs() * 1_000
+                + (since_epoch.subsec_nanos() / 1_000_000) as u64;
+
+    let tick = ((capture_start as f64 / 10_000.0).round() * 10_000.0) as u64;
+
+    let metadata = VideoMeta {
+        fps: 10,
+        res_y: 1232,
+        res_x: 1640,
+        format: "video/mp4".to_string(),
+        logger_id: "internal_test".to_string(),
+        device_id: "faux_device".to_string(),
+        capture_start: capture_start,
+        tick: tick,
+    };
+    let json_to_write = serde_json::to_string(&metadata)
+        .expect("Could not seralize VideoMeta.");
+
+    let path = Path::new("test_file.json");
+    let mut f = File::create(&path)
+        .expect("Could not create file.");
+
+    f.write_all(json_to_write.as_bytes())
+        .expect("Could not write file.");
 }
 
 fn main() {
@@ -126,9 +165,11 @@ fn main() {
             println!("{}", data.capture_start);
     }
 
-    video_data = sort_by_capture_start(video_data);
+    sort_by_capture_start(&mut video_data);
     println!("\n\nPost sorted:");
     for data in &video_data {
             println!("{}", data.capture_start);
     }
+
+    write_metadata_file();
 }
