@@ -1,3 +1,4 @@
+#![crate_name = "metamagic"]
 #[macro_use]
 extern crate serde_derive;
 extern crate serde;
@@ -6,7 +7,6 @@ extern crate serde_json;
 use std::fmt;
 use std::fs;
 use std::fs::File;
-use std::io::Read;
 use std::io::prelude::*;
 use std::path::Path;
 use std::time::{SystemTime, UNIX_EPOCH};
@@ -15,7 +15,7 @@ use std::time::{SystemTime, UNIX_EPOCH};
 
 /// The VideoMeta struct mirrors structure of Video Metadata JSON files.
 #[derive(Serialize, Deserialize, Debug, Clone)]
-struct VideoMeta {
+pub struct VideoMeta {
     fps: u32,
     format: String,
     res_y: u32,
@@ -41,7 +41,6 @@ impl fmt::Display for VideoMeta {
         let display_string = [device_id, logger_id, capture_start, tick, fps_format, resolution]
             .join("\n");
 
-        //TODO: Why is there no semicolon at the end of this write?
         write!(f, "{}", &display_string)
 
         //write!(f,
@@ -52,26 +51,37 @@ impl fmt::Display for VideoMeta {
 }
 
 /// Reads and deserializes JSON data into VideoMeta struct.
-fn load_metadata_json<P: AsRef<Path>>(file_path: P) -> VideoMeta {
-//fn load_metadata_json(file_path: &str) -> VideoMeta {
+/// # Arguments
+///
+/// * `file_path` - path specifying JSON file location.
+///
+/// # Remarks
+///
+/// Argument type is defined as an AsRef<Path> so
+/// many types are accepted (Path, String &str, ect.)
+pub fn load_metadata_json<P: AsRef<Path>>(file_path: P) -> VideoMeta {
     let mut file = File::open(file_path)
-        .expect("Failed to read file");
+        .expect("Failed to open file.");
 
     let mut string_file = String::new();
     file.read_to_string(&mut string_file)
-        .unwrap();
-
-    //let data: VideoMeta = serde_json::from_str(&string_file)
-    //    .unwrap();
-
-    //return data;
+        .expect("Failed to read file.");
 
     serde_json::from_str::<VideoMeta>(&string_file)
-        .unwrap()
+        .expect("Could deserialize JSON data.")
 }
 
-///Function for taking a directory and creating a list of VideoMeta structs
-fn get_video_metadata(dir_path: &str) -> Vec<VideoMeta> {
+// TODO: What to do with files that *aren't* JSON in the direcotry?
+/// Creates a vector of VideoMeta structs populated by all JSON files in directory.
+/// # Arguments
+///
+/// * `dir_path` - path specifying directory of JSON metadata files
+///
+/// # Remarks
+///
+/// Argument type is defined as an AsRef<Path> so
+/// many types are accepted (Path, String &str, ect.)
+pub fn get_video_metadata<P: AsRef<Path>>(dir_path: P) -> Vec<VideoMeta> {
     let paths = fs::read_dir(dir_path)
         .expect("Directory not found.");
 
@@ -94,8 +104,11 @@ fn get_video_metadata(dir_path: &str) -> Vec<VideoMeta> {
 // TODO: What to do when there is nothing matching the device ID?
 /// Filters a referenced VideoMeta vector by device_id and
 /// returns a new filtered vector.
-fn get_by_device_id(device_id: &str, video_data: &Vec<VideoMeta>) -> Vec<VideoMeta> {
-    // TODO: What exactly does 'borrow' mean in this context?
+/// # Arguments
+///
+/// * `device_id` - String reference to ID number of desired device metadata.
+/// * `video_data` - vector of VideoMeta structs to be filtered
+pub fn get_by_device_id(device_id: &str, video_data: &Vec<VideoMeta>) -> Vec<VideoMeta> {
     // Here we can use `.iter()` or `.into_iter()` - first one is referencing
     // the original data where as the latter borrows the data
     let filtered_devices = video_data
@@ -104,20 +117,25 @@ fn get_by_device_id(device_id: &str, video_data: &Vec<VideoMeta>) -> Vec<VideoMe
 
     let mut device_data: Vec<VideoMeta> = vec![];
 
+    //TODO: Could you write this to have an implicit return like the
+    // load json function?
     for each in filtered_devices {
         device_data.push(each.clone());
     }
     return device_data
 }
 
-fn sort_by_capture_start(video_data: &mut Vec<VideoMeta>) {
-    // Sorts VideoMeta vec by capture time.
+/// Sorts a vector of VideoMeta by capture time
+/// # Arguments
+///
+/// * `video_data` - vector of VideoMeta structs to be filtered
+pub fn sort_by_capture_start(video_data: &mut Vec<VideoMeta>) {
     video_data.sort_by(|a, b| a.capture_start.cmp(&b.capture_start));
 }
 
-/// Creates a new VeideoMeta struct with faux information and current time,
+/// Creates a new VeideoMeta struct with faux information and current time (ms),
 /// then serializes it to write a JSON metadata file.
-fn write_metadata_file() {
+pub fn write_metadata_file() {
     let since_epoch = SystemTime::now().duration_since(UNIX_EPOCH).unwrap();
 
     let capture_start = since_epoch.as_secs() * 1_000
@@ -169,6 +187,7 @@ fn main() {
     println!("\n\nPost sorted:");
     for data in &video_data {
             println!("{}", data.capture_start);
+            println!("{}", DateTime::from(data.capture_start));
     }
 
     write_metadata_file();
