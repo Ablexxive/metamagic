@@ -1,4 +1,6 @@
 #![crate_name = "metamagic"]
+extern crate chrono;
+
 #[macro_use]
 extern crate serde_derive;
 extern crate serde;
@@ -10,6 +12,7 @@ use std::fs::File;
 use std::io::prelude::*;
 use std::path::Path;
 use std::time::{SystemTime, UNIX_EPOCH};
+use chrono::*;
 
 //TODO: Write test block? Write docs?
 
@@ -59,16 +62,27 @@ impl fmt::Display for VideoMeta {
 ///
 /// Argument type is defined as an AsRef<Path> so
 /// many types are accepted (Path, String &str, ect.)
-pub fn load_metadata_json<P: AsRef<Path>>(file_path: P) -> VideoMeta {
+pub fn load_metadata_json<P: AsRef<Path>>(file_path: P) -> Option<VideoMeta> {
+    //TODO: Figure out how to return an option from the parent function instead of each
+    // unwrap call. Try 'unwrap_and_then'
     let mut file = File::open(file_path)
-        .expect("Failed to open file.");
+        .unwrap_or_else(|err| {
+            println!("Failed to open file: {}", err);
+            return None;
+        });
 
     let mut string_file = String::new();
     file.read_to_string(&mut string_file)
-        .expect("Failed to read file.");
+        .unwrap_or_else(|err| {
+            println!("Failed to read file: {}", err);
+            return None;
+        });
 
     serde_json::from_str::<VideoMeta>(&string_file)
-        .expect("Could deserialize JSON data.")
+        .unwrap_or_else(|err| {
+            println!("Could deserialize JSON data.: {}", err);
+            return None;
+        })
 }
 
 // TODO: What to do with files that *aren't* JSON in the direcotry?
@@ -82,7 +96,7 @@ pub fn load_metadata_json<P: AsRef<Path>>(file_path: P) -> VideoMeta {
 /// Argument type is defined as an AsRef<Path> so
 /// many types are accepted (Path, String &str, ect.)
 pub fn get_video_metadata<P: AsRef<Path>>(dir_path: P) -> Vec<VideoMeta> {
-    let paths = fs::read_dir(dir_path)
+    let entries = fs::read_dir(dir_path)
         .expect("Directory not found.");
 
     let mut video_data: Vec<VideoMeta> = vec![];
@@ -90,13 +104,16 @@ pub fn get_video_metadata<P: AsRef<Path>>(dir_path: P) -> Vec<VideoMeta> {
     //    video_data
     //        .push(load_metadata_json(path.unwrap().path().to_str().unwrap()))
     //}
-    for path in paths {
-        video_data.push(
-            load_metadata_json(path
-                               .expect("Initial path unwrap failed.")
-                               .path()
-                               .to_str()
-                               .expect("Final path unwrap failed.")));
+    for entry in entries {
+        // called "Destructuring"
+        if let Err(err) = entry {
+            println!("Invalid Entry: {}", err);
+            continue;
+        }
+        let entry = entry.unwrap();
+        if let Some(json_data) = load_metadata_json(entry.path()) {
+            video_data.push(json_data);
+        }
     }
     return video_data;
 }
@@ -187,8 +204,17 @@ fn main() {
     println!("\n\nPost sorted:");
     for data in &video_data {
             println!("{}", data.capture_start);
-            println!("{}", DateTime::from(data.capture_start));
+            let naive_datetime = NaiveDateTime::from_timestamp((data.capture_start/1000) as i64, (data.capture_start % 1000) as u32);
+            //println!("{}", DateTime::from(data.capture_start));
+            //let since_epoch = SystemTime::now().duration_since(UNIX_EPOCH).unwrap();
+            //let naive_datetime = NaiveDateTime::from_timestamp(since_epoch.as_secs() as i64, since_epoch.subsec_nanos());
+            println!("{}", &naive_datetime);
+            let datetime_again: DateTime<Utc> = DateTime::from_utc(naive_datetime, Utc);
+            println!("{}", datetime_again);
+
     }
+    let test_datetime = NaiveDateTime::from_timestamp(1510829990, 18);
+    println!("{}", test_datetime);
 
     write_metadata_file();
 }
