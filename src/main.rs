@@ -14,8 +14,6 @@ use std::path::Path;
 use std::time::{SystemTime, UNIX_EPOCH};
 use chrono::*;
 
-//TODO: Write test block? Write docs?
-
 /// The VideoMeta struct mirrors structure of Video Metadata JSON files.
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct VideoMeta {
@@ -29,27 +27,27 @@ pub struct VideoMeta {
     tick: u64,
 }
 
-//TODO: Convert capture start/tick to seconds? or more readable time format?
 /// Display implementation that cleanly prints out data contained
 /// in a VideoMeta struct.
+///
+/// # Remarks
+///
+/// Displayed 'Capture Time' and 'Tick' are calculated from incomplete data and may be incorrect.
+/// To get exact nanosecond values, use the Debug trait.
 impl fmt::Display for VideoMeta {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        let device_id = format!("Device ID: {}", self.device_id);
-        let logger_id = format!("Logger ID: {}", self.logger_id);
-        let capture_start = format!("Capture Start: {}", self.capture_start);
-        let tick = format!("Tick: {}", self.tick);
-        let fps_format = format!("FPS: {} Format: {}", self.fps, self.format);
-        let resolution = format!("Resolution: {} by {}", self.res_y, self.res_x);
+        let fmted_capture = NaiveDateTime::from_timestamp((self.capture_start/1000) as i64,
+                                                          (self.capture_start % 1000) as u32);
+        let fmted_tick = NaiveDateTime::from_timestamp((self.tick/1000) as i64, 0);
 
-        let display_string = [device_id, logger_id, capture_start, tick, fps_format, resolution]
-            .join("\n");
-
-        write!(f, "{}", &display_string)
-
-        //write!(f,
-        //       r#"Device ID: {}
-        //       Logger ID: {}
-        //       "#, )
+        // Could have both halfs in one but its a silly long line and I'm not
+        // sure how to escape an implict new line to split it up.
+        let first_half = format!("Device ID: {}\nLogger ID:{}\nCapture Start:{}\nTick:{}",
+                                 self.device_id, self.logger_id, fmted_capture, fmted_tick);
+        let second_half = format!("FPS: {} Format: {}\nResolution: {} by {}",
+                                   self.fps, self.format, self.res_y, self.res_x);
+        let display_string = [first_half, second_half].join("\n");
+        write!(f, "{}", display_string)
     }
 }
 
@@ -62,30 +60,39 @@ impl fmt::Display for VideoMeta {
 ///
 /// Argument type is defined as an AsRef<Path> so
 /// many types are accepted (Path, String &str, ect.)
-pub fn load_metadata_json<P: AsRef<Path>>(file_path: P) -> Option<VideoMeta> {
-    //TODO: Figure out how to return an option from the parent function instead of each
-    // unwrap call. Try 'unwrap_and_then'
-    let mut file = File::open(file_path)
-        .unwrap_or_else(|err| {
-            println!("Failed to open file: {}", err);
-            return None;
-        });
+//pub fn load_metadata_json<P: AsRef<Path>>(file_path: P) -> Option<VideoMeta> {
+pub fn load_metadata_json<P: AsRef<Path>>(file_path: P) -> Result<VideoMeta, serde_json::Error> {
+    //TODO: Figure out a generic error return for Result so you can return both IO errors and serde
+    //errors -> Maybe that's what Option is used for, w/ VideoMeta and None
+    let mut f = File::open(file_path)
+        .expect("Failed to open file.");
+
+    //TODO: This doesn't work because e -> std::io::Error and not serde_json::Error
+    //let mut file = match f {
+    //    Ok(file) => file,
+    //    Err(e) => return e,
+    //};
+    //let mut file = File::open(file_path)
+    //    .unwrap_or_else(|err| {
+    //        println!("Failed to open file: {}", err);
+    //        return None;
+    //    });
 
     let mut string_file = String::new();
-    file.read_to_string(&mut string_file)
-        .unwrap_or_else(|err| {
-            println!("Failed to read file: {}", err);
-            return None;
-        });
+    f.read_to_string(&mut string_file)
+        .expect("Failed to read file to string.");
+       // .unwrap_or_else(|err| {
+       //     println!("Failed to read file: {}", err);
+       //     return None;
+       // });
 
     serde_json::from_str::<VideoMeta>(&string_file)
-        .unwrap_or_else(|err| {
-            println!("Could deserialize JSON data.: {}", err);
-            return None;
-        })
+       // .unwrap_or_else(|err| {
+       //     println!("Could deserialize JSON data.: {}", err);
+       //     return None;
+       // })
 }
 
-// TODO: What to do with files that *aren't* JSON in the direcotry?
 /// Creates a vector of VideoMeta structs populated by all JSON files in directory.
 /// # Arguments
 ///
@@ -100,20 +107,52 @@ pub fn get_video_metadata<P: AsRef<Path>>(dir_path: P) -> Vec<VideoMeta> {
         .expect("Directory not found.");
 
     let mut video_data: Vec<VideoMeta> = vec![];
-    //for path in paths {
-    //    video_data
-    //        .push(load_metadata_json(path.unwrap().path().to_str().unwrap()))
-    //}
+
     for entry in entries {
         // called "Destructuring"
         if let Err(err) = entry {
             println!("Invalid Entry: {}", err);
             continue;
         }
-        let entry = entry.unwrap();
-        if let Some(json_data) = load_metadata_json(entry.path()) {
-            video_data.push(json_data);
-        }
+        let file_path = entry.unwrap().path();
+
+        // DESTRUCTURING TO ERROR WORKS
+        //let load_result = load_metadata_json(entry.path());
+        //if let Err(err) =  tmp_data {
+        //        println!("File {:?} is not a valid video metadata JSON.\nError: {}",
+        //                 entry.path(), err);
+        //        continue;
+        //};
+        //let json_data = load_result.unwrap();
+
+        //MATCH ARM WORKS
+        //let json_data = match load_metadata_json(entry.path()) {
+        //    Ok(data) => data,
+        //    Err(e) => {
+        //        println!("File {:?} is not a valid video metadata JSON.\nError: {}",
+        //                 entry.path(), e);
+        //        continue;
+        //    },
+        //};
+
+        //video_data.push(json_data);
+        // DESTRUCTURING TO OK WORKS
+        //if let Ok(json_data) = load_metadata_json(entry.path()) {
+        //    video_data.push(json_data);
+        //} else {
+        //    println!("Not a valid json file.");
+        //}
+        match load_metadata_json(&file_path) {
+            Ok(data) => {
+                video_data.push(data);
+                println!("File {:?} loaded.",
+                         file_path);
+            },
+            Err(e) => {
+                println!("File {:?} is not a valid video metadata JSON.\nError: {}",
+                         file_path, e);
+            },
+        };
     }
     return video_data;
 }
@@ -126,8 +165,6 @@ pub fn get_video_metadata<P: AsRef<Path>>(dir_path: P) -> Vec<VideoMeta> {
 /// * `device_id` - String reference to ID number of desired device metadata.
 /// * `video_data` - vector of VideoMeta structs to be filtered
 pub fn get_by_device_id(device_id: &str, video_data: &Vec<VideoMeta>) -> Vec<VideoMeta> {
-    // Here we can use `.iter()` or `.into_iter()` - first one is referencing
-    // the original data where as the latter borrows the data
     let filtered_devices = video_data
         .iter()
         .filter(|ref i|i.device_id == device_id);
@@ -140,6 +177,12 @@ pub fn get_by_device_id(device_id: &str, video_data: &Vec<VideoMeta>) -> Vec<Vid
         device_data.push(each.clone());
     }
     return device_data
+
+    //serde_json::from_str::<VideoMeta>(&string_file)
+    //    .unwrap_or_else(|err| {
+    //        println!("Could deserialize JSON data.: {}", err);
+    //        return None;
+    //    })
 }
 
 /// Sorts a vector of VideoMeta by capture time
