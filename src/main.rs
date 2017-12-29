@@ -67,30 +67,11 @@ pub fn load_metadata_json<P: AsRef<Path>>(file_path: P) -> Result<VideoMeta, ser
     let mut f = File::open(file_path)
         .expect("Failed to open file.");
 
-    //TODO: This doesn't work because e -> std::io::Error and not serde_json::Error
-    //let mut file = match f {
-    //    Ok(file) => file,
-    //    Err(e) => return e,
-    //};
-    //let mut file = File::open(file_path)
-    //    .unwrap_or_else(|err| {
-    //        println!("Failed to open file: {}", err);
-    //        return None;
-    //    });
-
     let mut string_file = String::new();
     f.read_to_string(&mut string_file)
         .expect("Failed to read file to string.");
-       // .unwrap_or_else(|err| {
-       //     println!("Failed to read file: {}", err);
-       //     return None;
-       // });
 
     serde_json::from_str::<VideoMeta>(&string_file)
-       // .unwrap_or_else(|err| {
-       //     println!("Could deserialize JSON data.: {}", err);
-       //     return None;
-       // })
 }
 
 /// Creates a vector of VideoMeta structs populated by all JSON files in directory.
@@ -109,39 +90,12 @@ pub fn get_video_metadata<P: AsRef<Path>>(dir_path: P) -> Vec<VideoMeta> {
     let mut video_data: Vec<VideoMeta> = vec![];
 
     for entry in entries {
-        // called "Destructuring"
         if let Err(err) = entry {
             println!("Invalid Entry: {}", err);
             continue;
         }
         let file_path = entry.unwrap().path();
 
-        // DESTRUCTURING TO ERROR WORKS
-        //let load_result = load_metadata_json(entry.path());
-        //if let Err(err) =  tmp_data {
-        //        println!("File {:?} is not a valid video metadata JSON.\nError: {}",
-        //                 entry.path(), err);
-        //        continue;
-        //};
-        //let json_data = load_result.unwrap();
-
-        //MATCH ARM WORKS
-        //let json_data = match load_metadata_json(entry.path()) {
-        //    Ok(data) => data,
-        //    Err(e) => {
-        //        println!("File {:?} is not a valid video metadata JSON.\nError: {}",
-        //                 entry.path(), e);
-        //        continue;
-        //    },
-        //};
-
-        //video_data.push(json_data);
-        // DESTRUCTURING TO OK WORKS
-        //if let Ok(json_data) = load_metadata_json(entry.path()) {
-        //    video_data.push(json_data);
-        //} else {
-        //    println!("Not a valid json file.");
-        //}
         match load_metadata_json(&file_path) {
             Ok(data) => {
                 video_data.push(data);
