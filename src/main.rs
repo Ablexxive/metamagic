@@ -42,7 +42,7 @@ impl fmt::Display for VideoMeta {
 
         // Could have both halfs in one but its a silly long line and I'm not
         // sure how to escape an implict new line to split it up.
-        let first_half = format!("Device ID: {}\nLogger ID:{}\nCapture Start:{}\nTick:{}",
+        let first_half = format!("Device ID: {}\nLogger ID: {}\nCapture Start: {}\nTick: {}",
                                  self.device_id, self.logger_id, fmted_capture, fmted_tick);
         let second_half = format!("FPS: {} Format: {}\nResolution: {} by {}",
                                    self.fps, self.format, self.res_y, self.res_x);
@@ -157,7 +157,6 @@ pub fn get_video_metadata<P: AsRef<Path>>(dir_path: P) -> Vec<VideoMeta> {
     return video_data;
 }
 
-// TODO: What to do when there is nothing matching the device ID?
 /// Filters a referenced VideoMeta vector by device_id and
 /// returns a new filtered vector.
 /// # Arguments
@@ -171,18 +170,11 @@ pub fn get_by_device_id(device_id: &str, video_data: &Vec<VideoMeta>) -> Vec<Vid
 
     let mut device_data: Vec<VideoMeta> = vec![];
 
-    //TODO: Could you write this to have an implicit return like the
-    // load json function?
     for each in filtered_devices {
         device_data.push(each.clone());
     }
-    return device_data
 
-    //serde_json::from_str::<VideoMeta>(&string_file)
-    //    .unwrap_or_else(|err| {
-    //        println!("Could deserialize JSON data.: {}", err);
-    //        return None;
-    //    })
+    return device_data
 }
 
 /// Sorts a vector of VideoMeta by capture time
@@ -232,7 +224,7 @@ fn main() {
 
     let device_data = get_by_device_id(device_id, &video_data);
 
-    println!("Listing all metadata files from device ID: {}", device_id);
+    println!("\nListing all metadata files from device ID: {}", device_id);
     for data in device_data {
         println!("{}\n", data);
     }
@@ -247,17 +239,6 @@ fn main() {
     println!("\n\nPost sorted:");
     for data in &video_data {
             println!("{}", data.capture_start);
-            let naive_datetime = NaiveDateTime::from_timestamp((data.capture_start/1000) as i64, (data.capture_start % 1000) as u32);
-            //println!("{}", DateTime::from(data.capture_start));
-            //let since_epoch = SystemTime::now().duration_since(UNIX_EPOCH).unwrap();
-            //let naive_datetime = NaiveDateTime::from_timestamp(since_epoch.as_secs() as i64, since_epoch.subsec_nanos());
-            println!("{}", &naive_datetime);
-            let datetime_again: DateTime<Utc> = DateTime::from_utc(naive_datetime, Utc);
-            println!("{}", datetime_again);
-
     }
-    let test_datetime = NaiveDateTime::from_timestamp(1510829990, 18);
-    println!("{}", test_datetime);
-
     write_metadata_file();
 }
