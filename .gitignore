@@ -1,5 +1,5 @@
 guidelines.txt
-*.json
+test_file.json
 *.tar
 /target/
 **/*.rs.bk
